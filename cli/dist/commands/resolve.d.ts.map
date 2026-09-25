@@ -1,0 +1,1 @@
+{"version":3,"file":"resolve.d.ts","sourceRoot":"","sources":["../../src/commands/resolve.ts"],"names":[],"mappings":"AAIA,wBAAsB,UAAU,CAAC,IAAI,EAAE;IACrC,IAAI,EAAE,MAAM,CAAC;IACb,mBAAmB,EAAE,MAAM,CAAC;IAC5B,WAAW,EAAE,MAAM,CAAC;CACrB,GAAG,OAAO,CAAC,IAAI,CAAC,CAiBhB"}
