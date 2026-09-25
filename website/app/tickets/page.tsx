@@ -6,12 +6,13 @@ import TicketCard from "@/components/TicketCard";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 
-type FilterValue = "all" | TicketStatus;
+type FilterValue = "all" | TicketStatus | "approved";
 
 const FILTERS: { label: string; value: FilterValue }[] = [
   { label: "All", value: "all" },
   { label: "Auto-Resolved", value: "auto-resolved" },
   { label: "Needs Review", value: "needs-review" },
+  { label: "Approved", value: "approved" },
 ];
 
 export default function TicketsPage() {
@@ -56,10 +57,13 @@ export default function TicketsPage() {
   const filtered =
     filter === "all"
       ? tickets
+      : filter === "approved"
+      ? tickets.filter((t) => t.approved)
       : tickets.filter((t) => t.status === filter);
 
   const autoCount = tickets.filter((t) => t.status === "auto-resolved").length;
   const reviewCount = tickets.filter((t) => t.status === "needs-review").length;
+  const approvedCount = tickets.filter((t) => t.approved).length;
 
   return (
     <>
@@ -87,6 +91,11 @@ export default function TicketsPage() {
                 </h1>
                 <p className="mt-1 text-sm text-text-muted">
                   {autoCount} auto-resolved &middot; {reviewCount} needs review
+                  {approvedCount > 0 && (
+                    <span className="text-status-resolved ml-1">
+                      &middot; {approvedCount} approved
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -129,11 +138,17 @@ export default function TicketsPage() {
           </div>
 
           {/* Filter tabs */}
-          <div className="flex items-center gap-1 mb-4 bg-surface border border-border rounded-lg p-1 w-fit">
+          <div
+            className="flex items-center gap-1 mb-4 bg-surface border border-border rounded-lg p-1 w-fit"
+            role="group"
+            aria-label="Filter tickets"
+          >
             {FILTERS.map(({ label, value }) => (
               <button
                 key={value}
+                type="button"
                 onClick={() => setFilter(value)}
+                aria-pressed={filter === value}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   filter === value
                     ? "bg-surface-raised text-text-primary shadow-sm"

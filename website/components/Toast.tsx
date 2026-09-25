@@ -36,7 +36,7 @@ function ToastItem({
 
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 rounded-lg border text-sm shadow-lg pointer-events-auto min-w-72 max-w-sm ${
+      className={`toast-enter flex items-start gap-3 px-4 py-3 rounded-lg border text-sm shadow-lg pointer-events-auto min-w-72 max-w-sm ${
         isError
           ? "bg-status-review-bg border-status-review/40 text-status-review"
           : "bg-status-resolved-bg border-status-resolved/40 text-status-resolved"

@@ -29,8 +29,9 @@ export default function TicketDetailPage({
         const res = await fetch(`/api/tickets`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to load ticket");
-        const found = Array.isArray(data) ? data.find((t: Ticket) => t.id === id) : data;
+        const found: Ticket | undefined = Array.isArray(data) ? data.find((t: Ticket) => t.id === id) : data;
         setTicket(found ?? null);
+        if (found?.approved) setDecision("approved");
       } catch (error: any) {
         addToast(error.message ?? "Failed to load ticket");
       } finally {
@@ -134,14 +135,18 @@ export default function TicketDetailPage({
         {decision === null && !ticket.approved ? (
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={handleApprove}
               disabled={isApproving}
+              aria-label={isApproving ? "Applying resolution…" : "Approve and apply resolution to source file"}
               className="px-5 py-2.5 rounded-md text-sm font-medium bg-status-resolved-bg text-status-resolved border border-status-resolved/40 hover:bg-status-resolved/20 transition-colors disabled:opacity-50"
             >
               {isApproving ? "Applying..." : "✓ Approve"}
             </button>
             <button
+              type="button"
               onClick={() => setDecision("rejected")}
+              aria-label="Reject this resolution"
               className="px-5 py-2.5 rounded-md text-sm font-medium bg-surface border border-border text-text-muted hover:text-text-primary hover:border-border transition-colors"
             >
               ✗ Reject
@@ -162,7 +167,9 @@ export default function TicketDetailPage({
               {decision === "approved" || ticket.approved ? "✓ Approved" : "✗ Rejected"}
             </div>
             <button
+              type="button"
               onClick={() => setDecision(null)}
+              aria-label="Undo decision"
               className="text-xs text-text-muted hover:text-text-primary transition-colors"
             >
               Undo
