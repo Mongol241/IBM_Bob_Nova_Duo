@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f1729;
+  --surface: #131f35;
+  --surface-raised: #1a2944;
+  --border: #1e3a5f;
+  --accent-blue: #1e6fff;
+  --accent-cyan: #00b4ff;
+  --text-primary: #e8edf5;
+  --text-muted: #6b8ab0;
+  --status-resolved: #22c55e;
+  --status-resolved-bg: #052e16;
+  --status-review: #f59e0b;
+  --status-review-bg: #2d1a00;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-status-resolved: var(--status-resolved);
+  --color-status-resolved-bg: var(--status-resolved-bg);
+  --color-status-review: var(--status-review);
+  --color-status-review-bg: var(--status-review-bg);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+/* Remove default Chrome/Safari scrollbar */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Remove scrollbar for Firefox */
+html {
+  scrollbar-width: none;
+}
+
+/* Remove scrollbar for IE/Edge */
+html {
+  -ms-overflow-style: none;
+}

@@ -4,7 +4,6 @@ Two components: a **CLI engine** that finds and resolves conflicts, and a **web 
 
 ---
 
-
 ## Part 1 — CLI (Engine)
 
 ### Purpose
