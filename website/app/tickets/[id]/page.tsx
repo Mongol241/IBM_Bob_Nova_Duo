@@ -1,13 +1,15 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MOCK_TICKETS } from "@/lib/mock-data";
 import StatusBadge from "@/components/StatusBadge";
 import ConfidenceBar from "@/components/ConfidenceBar";
 import DiffPanel from "@/components/DiffPanel";
 import ResolutionBlock from "@/components/ResolutionBlock";
+import Toast from "@/components/Toast";
+import { useToast } from "@/lib/useToast";
+import { Ticket } from "@/lib/types";
 
 export default function TicketDetailPage({
   params,
@@ -15,17 +17,67 @@ export default function TicketDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const ticket = MOCK_TICKETS.find((t) => t.id === id);
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isApproving, setIsApproving] = useState(false);
+  const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
+  const { toasts, addToast, dismiss } = useToast();
+
+  useEffect(() => {
+    async function loadTicket() {
+      try {
+        const res = await fetch(`/api/tickets`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed to load ticket");
+        const found = Array.isArray(data) ? data.find((t: Ticket) => t.id === id) : data;
+        setTicket(found ?? null);
+      } catch (error: any) {
+        addToast(error.message ?? "Failed to load ticket");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadTicket();
+  }, [id]);
+
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      const res = await fetch("/api/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to apply resolution");
+      setDecision("approved");
+      setTicket((prev) => prev ? { ...prev, approved: true } : null);
+      addToast("Resolution applied to source file", "success");
+    } catch (error: any) {
+      addToast(error.message ?? "Failed to approve ticket");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <Toast toasts={toasts} onDismiss={dismiss} />
+        <div className="flex items-center justify-center py-24">
+          <p className="text-text-muted animate-pulse">Loading ticket details...</p>
+        </div>
+      </>
+    );
+  }
 
   if (!ticket) {
     notFound();
   }
 
-  const [decision, setDecision] = useState<"approved" | "rejected" | null>(
-    null
-  );
-
   return (
+    <>
+      <Toast toasts={toasts} onDismiss={dismiss} />
     <div className="max-w-4xl">
       {/* Back link */}
       <Link
@@ -79,13 +131,14 @@ export default function TicketDetailPage({
 
       {/* Approve / Reject actions */}
       <div className="border-t border-border pt-6">
-        {decision === null ? (
+        {decision === null && !ticket.approved ? (
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setDecision("approved")}
-              className="px-5 py-2.5 rounded-md text-sm font-medium bg-status-resolved-bg text-status-resolved border border-status-resolved/40 hover:bg-status-resolved/20 transition-colors"
+              onClick={handleApprove}
+              disabled={isApproving}
+              className="px-5 py-2.5 rounded-md text-sm font-medium bg-status-resolved-bg text-status-resolved border border-status-resolved/40 hover:bg-status-resolved/20 transition-colors disabled:opacity-50"
             >
-              ✓ Approve
+              {isApproving ? "Applying..." : "✓ Approve"}
             </button>
             <button
               onClick={() => setDecision("rejected")}
@@ -101,12 +154,12 @@ export default function TicketDetailPage({
           <div className="flex items-center gap-3">
             <div
               className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium border ${
-                decision === "approved"
+                decision === "approved" || ticket.approved
                   ? "bg-status-resolved-bg text-status-resolved border-status-resolved/40"
                   : "bg-surface-raised text-text-muted border-border"
               }`}
             >
-              {decision === "approved" ? "✓ Approved" : "✗ Rejected"}
+              {decision === "approved" || ticket.approved ? "✓ Approved" : "✗ Rejected"}
             </div>
             <button
               onClick={() => setDecision(null)}
@@ -118,5 +171,6 @@ export default function TicketDetailPage({
         )}
       </div>
     </div>
+    </>
   );
 }
