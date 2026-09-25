@@ -1,5 +1,7 @@
 [
   {
+    "approved": false,
+    "rejected": false,
     "id": "conflict-01",
     "file": "package-lock.json",
     "startLine": 13,
@@ -12,6 +14,8 @@
     "status": "needs-review"
   },
   {
+    "approved": false,
+    "rejected": false,
     "id": "conflict-02",
     "file": "README.md",
     "startLine": 13,
@@ -24,20 +28,24 @@
     "status": "needs-review"
   },
   {
+    "approved": false,
+    "rejected": false,
     "id": "conflict-03",
-    "file": "src\\auth.ts",
-    "startLine": 15,
-    "endLine": 27,
-    "head": "if (!valid) {\r\n    // Generic message — do not hint that the username exists\r\n    res.status(401).json({ error: \"Invalid credentials\" });\r\n    return;\r\n  }",
-    "incoming": "if (!valid) {\r\n    // Include username for friendlier UX — but leaks username enumeration\r\n    res.status(401).json({ error: `Invalid password for user \"${username}\"` });\r\n    return;\r\n  }",
+    "file": "src/billing.ts",
+    "startLine": 20,
+    "endLine": 33,
+    "head": "// Validate discount code before applying it\r\n  let discount = 0;\r\n  if (discountCode) {\r\n    const coupon = await stripe.coupons.retrieve(discountCode);\r\n    if (!coupon.valid) throw new Error(`Coupon ${discountCode} is not valid`);\r\n    discount = coupon.percent_off ? subtotal * (coupon.percent_off / 100) : (coupon.amount_off ?? 0);\r\n  }\r\n  const total = subtotal - discount;",
+    "incoming": "// Skip coupon validation — apply a flat discount directly\r\n  const discount = discountCode ? subtotal * 0.1 : 0;\r\n  const total = subtotal - discount;",
     "confidence": 0,
     "resolution": "",
     "reasoning": "spawn bob ENOENT",
     "status": "needs-review"
   },
   {
+    "approved": false,
+    "rejected": false,
     "id": "conflict-04",
-    "file": "src\\utils.ts",
+    "file": "src/utils.ts",
     "startLine": 9,
     "endLine": 25,
     "head": "export function formatDate(d: Date): string {\r\n  const year = d.getFullYear();\r\n  const month = padStart(d.getMonth() + 1, 2);\r\n  const day = padStart(d.getDate(), 2);\r\n  return `${year}-${month}-${day}`;\r\n}",
@@ -48,12 +56,14 @@
     "status": "needs-review"
   },
   {
+    "approved": false,
+    "rejected": false,
     "id": "conflict-05",
-    "file": "src\\billing.ts",
-    "startLine": 20,
-    "endLine": 33,
-    "head": "// Validate discount code before applying it\r\n  let discount = 0;\r\n  if (discountCode) {\r\n    const coupon = await stripe.coupons.retrieve(discountCode);\r\n    if (!coupon.valid) throw new Error(`Coupon ${discountCode} is not valid`);\r\n    discount = coupon.percent_off ? subtotal * (coupon.percent_off / 100) : (coupon.amount_off ?? 0);\r\n  }\r\n  const total = subtotal - discount;",
-    "incoming": "// Skip coupon validation — apply a flat discount directly\r\n  const discount = discountCode ? subtotal * 0.1 : 0;\r\n  const total = subtotal - discount;",
+    "file": "src/auth.ts",
+    "startLine": 15,
+    "endLine": 27,
+    "head": "if (!valid) {\r\n    // Generic message — do not hint that the username exists\r\n    res.status(401).json({ error: \"Invalid credentials\" });\r\n    return;\r\n  }",
+    "incoming": "if (!valid) {\r\n    // Include username for friendlier UX — but leaks username enumeration\r\n    res.status(401).json({ error: `Invalid password for user \"${username}\"` });\r\n    return;\r\n  }",
     "confidence": 0,
     "resolution": "",
     "reasoning": "spawn bob ENOENT",

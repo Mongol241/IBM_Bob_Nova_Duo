@@ -10,6 +10,7 @@ const execPromise = promisify(exec);
 // process.cwd() is the website/ directory when running via Next.js
 const ROOT = path.resolve(process.cwd(), '..');
 const DEFAULT_CLI_PATH = path.join(ROOT, 'cli', 'dist', 'index.js');
+const DEFAULT_REPO_PATH = path.join(ROOT, 'cli', 'demo-repo');
 
 export async function POST(request: Request) {
   try {
@@ -28,7 +29,10 @@ export async function POST(request: Request) {
     const cliPath = process.env.CLI_PATH
       ? path.resolve(process.cwd(), process.env.CLI_PATH)
       : DEFAULT_CLI_PATH;
-    await execPromise(`node "${cliPath}" apply --file "${tmpFile}" --id ${ticketId}`);
+    const repoPath = process.env.REPO_PATH
+      ? path.resolve(process.cwd(), process.env.REPO_PATH)
+      : DEFAULT_REPO_PATH;
+    await execPromise(`node "${cliPath}" apply --file "${tmpFile}" --id ${ticketId} --repo "${repoPath}"`);
 
     // Mark approved in storage
     const updatedTickets = tickets.map(t =>

@@ -14,7 +14,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
       className="group relative block aspect-square bg-surface border border-border rounded-lg p-4 hover:border-accent-blue/50 hover:bg-surface-raised transition-all flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue"
       aria-label={`View conflict ${ticket.id} in ${ticket.file}`}
     >
-      {/* Approved checkmark badge */}
+      {/* Approved / Rejected badge */}
       {ticket.approved && (
         <span
           className="absolute top-2 right-2 w-5 h-5 rounded-full bg-status-resolved-bg border border-status-resolved/40 flex items-center justify-center"
@@ -23,6 +23,17 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
             <path d="M2 5l2.5 2.5L8 3" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      )}
+      {ticket.rejected && !ticket.approved && (
+        <span
+          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-surface-raised border border-border flex items-center justify-center"
+          title="Rejected"
+          aria-label="Rejected"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M3 3l4 4M7 3l-4 4" stroke="#6b8ab0" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </span>
       )}

@@ -24,8 +24,9 @@ export async function runApply(opts) {
     if (!ticket) {
         throw new Error(`ticket "${opts.conflictId}" not found`);
     }
-    // 4. Read the source file
-    const sourcePath = resolve(process.cwd(), ticket.file);
+    // 4. Read the source file — resolve relative to repoRoot, not process.cwd()
+    const root = opts.repoRoot ?? process.cwd();
+    const sourcePath = resolve(root, ticket.file.replace(/\//g, "/"));
     let sourceRaw;
     try {
         sourceRaw = await readFile(sourcePath, "utf-8");

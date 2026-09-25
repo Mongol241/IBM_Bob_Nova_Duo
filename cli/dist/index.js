@@ -31,8 +31,13 @@ program
     .description("Apply a single approved resolution from a ticket JSON file to its source file.")
     .requiredOption("--file <path>", "Path to the tickets JSON file")
     .requiredOption("--id <id>", "The conflict id to apply (e.g. conflict-01)")
+    .option("--repo <path>", "Root of the repository whose files will be patched (defaults to cwd)")
     .action(async (opts) => {
-    await runApply({ ticketsFile: opts.file, conflictId: opts.id });
+    await runApply({
+        ticketsFile: opts.file,
+        conflictId: opts.id,
+        repoRoot: opts.repo,
+    });
 });
 program.parseAsync(process.argv).catch((err) => {
     console.error(err instanceof Error ? err.message : String(err));

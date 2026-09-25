@@ -11,6 +11,10 @@ function detectLineEnding(raw: string): "\r\n" | "\n" {
 export async function runApply(opts: {
   ticketsFile: string;
   conflictId: string;
+  /** Absolute path to the root of the repository being patched.
+   *  ticket.file is always a forward-slash relative path from this root.
+   *  Defaults to process.cwd() only when called directly from the cli/ directory. */
+  repoRoot?: string;
 }): Promise<void> {
   // 1. Read and parse the tickets file
   let raw: string;
@@ -35,8 +39,9 @@ export async function runApply(opts: {
     throw new Error(`ticket "${opts.conflictId}" not found`);
   }
 
-  // 4. Read the source file
-  const sourcePath = resolve(process.cwd(), ticket.file);
+  // 4. Read the source file — resolve relative to repoRoot, not process.cwd()
+  const root = opts.repoRoot ?? process.cwd();
+  const sourcePath = resolve(root, ticket.file.replace(/\//g, "/"));
   let sourceRaw: string;
   try {
     sourceRaw = await readFile(sourcePath, "utf-8");
