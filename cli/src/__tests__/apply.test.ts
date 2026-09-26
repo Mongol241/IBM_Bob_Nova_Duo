@@ -1,19 +1,16 @@
 import { jest } from "@jest/globals";
 
-// ── mock fs/promises before importing the module under test ──────────────────
-const mockReadFile = jest.fn<
-  (path: string, encoding: string) => Promise<string>
->();
-const mockWriteFile = jest.fn<
-  (path: string, data: string, encoding: string) => Promise<void>
->();
+// ── ESM-compatible mock for fs/promises ──────────────────────────────────────
+const mockReadFile = jest.fn<(path: string, encoding: string) => Promise<string>>();
+const mockWriteFile = jest.fn<(path: string, data: string, encoding: string) => Promise<void>>();
 
-jest.mock("fs/promises", () => ({
+await jest.unstable_mockModule("fs/promises", () => ({
   readFile: mockReadFile,
   writeFile: mockWriteFile,
 }));
 
-import { runApply } from "../commands/apply.js";
+// Dynamically import AFTER the mock is registered
+const { runApply } = await import("../commands/apply.js");
 import type { Ticket } from "../types.js";
 
 // ── helpers ──────────────────────────────────────────────────────────────────

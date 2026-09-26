@@ -32,7 +32,7 @@ export async function callBobShell(conflict: ConflictRegion): Promise<BobResolut
   const prompt = buildPrompt(conflict);
 
   return new Promise<BobResolution>((resolve, reject) => {
-    const child = spawn("bob", ["-p", prompt], { shell: false });
+    const child = spawn("bob", ["-p", prompt], { shell: true });
 
     if (!child.stdout || !child.stderr) {
       reject(new Error("child process has no stdout/stderr — stdio must be 'pipe'"));

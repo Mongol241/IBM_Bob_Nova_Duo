@@ -225,13 +225,22 @@ describe("callBobShellWithConcurrency", () => {
 
     const pendingAll = callBobShellWithConcurrency(conflicts, 2);
 
-    // Resolve all procs
-    for (const proc of procs) {
-      proc.stdout.push(JSON.stringify(validResolution));
-      proc.emit("close", 0);
-    }
+    // Resolve procs as they are spawned: emit close immediately after each spawn
+    // so the worker loops advance and spawn the next conflict without hanging.
+    // Use setImmediate to let the current microtask queue flush between emits.
+    const emitAll = new Promise<void>((resolve) => {
+      let emitted = 0;
+      function emitNext() {
+        if (emitted >= procs.length) { resolve(); return; }
+        const proc = procs[emitted++];
+        proc.stdout.push(JSON.stringify(validResolution));
+        proc.emit("close", 0);
+        setImmediate(emitNext);
+      }
+      setImmediate(emitNext);
+    });
 
-    const results = await pendingAll;
+    const [results] = await Promise.all([pendingAll, emitAll]);
 
     expect(results).toHaveLength(3);
     expect(results[0].conflict.file).toBe("a.ts");
@@ -241,7 +250,7 @@ describe("callBobShellWithConcurrency", () => {
       expect(r.result).toEqual(validResolution);
       expect(r.error).toBeNull();
     });
-  });
+  }, 10_000);
 
   it("captures individual failures without aborting others", async () => {
     const conflicts: ConflictRegion[] = [
@@ -254,6 +263,9 @@ describe("callBobShellWithConcurrency", () => {
     mockSpawn.mockImplementation(() => procs[callIdx++]);
 
     const pendingAll = callBobShellWithConcurrency(conflicts, 2);
+
+    // Yield to let the worker promises register their event listeners before emitting
+    await Promise.resolve();
 
     // good: success
     procs[0].stdout.push(JSON.stringify(validResolution));
@@ -270,5 +282,5 @@ describe("callBobShellWithConcurrency", () => {
 
     expect(results[1].result).toBeNull();
     expect(results[1].error).toBe("permission denied");
-  });
+  }, 10_000);
 });

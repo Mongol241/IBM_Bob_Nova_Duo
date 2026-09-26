@@ -11,6 +11,10 @@ function detectLineEnding(raw: string): "\r\n" | "\n" {
 export async function runApply(opts: {
   ticketsFile: string;
   conflictId: string;
+  /** Absolute path to the root of the repository being patched.
+   *  ticket.file is always a forward-slash relative path from this root.
+   *  Defaults to process.cwd() only when called directly from the cli/ directory. */
+  repoRoot?: string;
 }): Promise<void> {
   // 1. Read and parse the tickets file
   let raw: string;
@@ -35,8 +39,9 @@ export async function runApply(opts: {
     throw new Error(`ticket "${opts.conflictId}" not found`);
   }
 
-  // 4. Read the source file
-  const sourcePath = resolve(process.cwd(), ticket.file);
+  // 4. Read the source file — resolve relative to repoRoot, not process.cwd()
+  const root = opts.repoRoot ?? process.cwd();
+  const sourcePath = resolve(root, ticket.file);
   let sourceRaw: string;
   try {
     sourceRaw = await readFile(sourcePath, "utf-8");
@@ -84,6 +89,12 @@ export async function runApply(opts: {
   }
 
   // 8. Replace [startIdx..endIdx] with resolution lines
+  if (!ticket.resolution || ticket.resolution.trim() === "") {
+    throw new Error(
+      `Ticket "${opts.conflictId}" has an empty resolution — cannot apply. ` +
+        `The conflict was not resolved by Bob (check ticket status and reasoning).`
+    );
+  }
   const resolutionLines = ticket.resolution.split("\n").map((l) => l.replace(/\r$/, ""));
   lines.splice(startIdx, endIdx - startIdx + 1, ...resolutionLines);
 
@@ -94,8 +105,8 @@ export async function runApply(opts: {
       : lines.join("\n");
   await writeFile(sourcePath, finalOutput, "utf-8");
 
-  // 10. Success message
-  console.log(
+  // 10. Success message — stderr only (stdout is JSON-only per CLI contract)
+  console.error(
     `Applied ${opts.conflictId}: ${ticket.file} (lines ${ticket.startLine}–${ticket.endLine})`
   );
 }

@@ -1,5 +1,9 @@
 import { readdir, readFile } from "fs/promises";
 import { join, relative } from "path";
+/** Normalise Windows backslashes to forward slashes for a portable ticket.file value. */
+function toForwardSlash(p) {
+    return p.replace(/\\/g, "/");
+}
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", ".bob"]);
 export async function findConflictedFiles(repoPath) {
     const results = [];
@@ -15,7 +19,7 @@ export async function findConflictedFiles(repoPath) {
                 const fullPath = join(dir, entry.name);
                 const content = await readFile(fullPath, "utf8").catch(() => "");
                 if (content.includes("<<<<<<<")) {
-                    results.push(relative(repoPath, fullPath));
+                    results.push(toForwardSlash(relative(repoPath, fullPath)));
                 }
             }
         }));

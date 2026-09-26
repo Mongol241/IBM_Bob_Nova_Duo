@@ -1,13 +1,15 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MOCK_TICKETS } from "@/lib/mock-data";
 import StatusBadge from "@/components/StatusBadge";
 import ConfidenceBar from "@/components/ConfidenceBar";
 import DiffPanel from "@/components/DiffPanel";
 import ResolutionBlock from "@/components/ResolutionBlock";
+import Toast from "@/components/Toast";
+import { useToast } from "@/lib/useToast";
+import { Ticket } from "@/lib/types";
 
 export default function TicketDetailPage({
   params,
@@ -15,108 +17,192 @@ export default function TicketDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const ticket = MOCK_TICKETS.find((t) => t.id === id);
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
+  const { toasts, addToast, dismiss } = useToast();
+
+  useEffect(() => {
+    async function loadTicket() {
+      try {
+        // Use the dedicated single-ticket route
+        const res = await fetch(`/api/tickets/${id}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed to load ticket");
+        setTicket(data as Ticket);
+        if ((data as Ticket).approved) setDecision("approved");
+        if ((data as Ticket).rejected) setDecision("rejected");
+      } catch (error: any) {
+        addToast(error.message ?? "Failed to load ticket");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadTicket();
+  }, [id]);
+
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      const res = await fetch("/api/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to apply resolution");
+      setDecision("approved");
+      setTicket((prev) => prev ? { ...prev, approved: true, rejected: false } : null);
+      addToast("Resolution applied to source file", "success");
+    } catch (error: any) {
+      addToast(error.message ?? "Failed to approve ticket");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    setIsRejecting(true);
+    try {
+      const res = await fetch(`/api/tickets/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to reject ticket");
+      setDecision("rejected");
+      setTicket((prev) => prev ? { ...prev, rejected: true, approved: false } : null);
+    } catch (error: any) {
+      addToast(error.message ?? "Failed to reject ticket");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <Toast toasts={toasts} onDismiss={dismiss} />
+        <div className="flex items-center justify-center py-24">
+          <p className="text-text-muted animate-pulse">Loading ticket details...</p>
+        </div>
+      </>
+    );
+  }
 
   if (!ticket) {
     notFound();
   }
 
-  const [decision, setDecision] = useState<"approved" | "rejected" | null>(
-    null
-  );
-
   return (
-    <div className="max-w-4xl">
-      {/* Back link */}
-      <Link
-        href="/tickets"
-        className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors mb-6"
-      >
-        <span>←</span>
-        Back to tickets
-      </Link>
+    <>
+      <Toast toasts={toasts} onDismiss={dismiss} />
+      <div className="max-w-4xl">
+        {/* Back link */}
+        <Link
+          href="/tickets"
+          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors mb-6"
+        >
+          <span>←</span>
+          Back to tickets
+        </Link>
 
-      {/* Header */}
-      <div
-        className="h-px mb-6 rounded-full"
-        style={{
-          background:
-            "linear-gradient(90deg, #1e6fff 0%, #00b4ff 50%, transparent 100%)",
-        }}
-      />
-      <div className="flex items-start justify-between gap-4 mb-8">
-        <div>
-          <p className="text-xs font-mono text-text-muted mb-1">{ticket.id}</p>
-          <h1 className="text-xl font-semibold text-text-primary font-mono">
-            {ticket.file}
-          </h1>
-        </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <StatusBadge status={ticket.status} />
-          <ConfidenceBar value={ticket.confidence} />
-        </div>
-      </div>
-
-      {/* Reasoning */}
-      <div className="mb-8 bg-surface border border-border rounded-lg p-5">
-        <h3 className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wider">
-          Reasoning
-        </h3>
-        <p className="text-sm text-text-primary leading-relaxed">
-          {ticket.reasoning}
-        </p>
-      </div>
-
-      {/* Diff sides */}
-      <div className="mb-8">
-        <DiffPanel head={ticket.head} incoming={ticket.incoming} />
-      </div>
-
-      {/* Resolution */}
-      <div className="mb-8">
-        <ResolutionBlock code={ticket.resolution} />
-      </div>
-
-      {/* Approve / Reject actions */}
-      <div className="border-t border-border pt-6">
-        {decision === null ? (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setDecision("approved")}
-              className="px-5 py-2.5 rounded-md text-sm font-medium bg-status-resolved-bg text-status-resolved border border-status-resolved/40 hover:bg-status-resolved/20 transition-colors"
-            >
-              ✓ Approve
-            </button>
-            <button
-              onClick={() => setDecision("rejected")}
-              className="px-5 py-2.5 rounded-md text-sm font-medium bg-surface border border-border text-text-muted hover:text-text-primary hover:border-border transition-colors"
-            >
-              ✗ Reject
-            </button>
-            <p className="text-xs text-text-muted ml-2">
-              Approve to apply this resolution to the source file.
-            </p>
+        {/* Header */}
+        <div
+          className="h-px mb-6 rounded-full"
+          style={{
+            background:
+              "linear-gradient(90deg, #1e6fff 0%, #00b4ff 50%, transparent 100%)",
+          }}
+        />
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <div>
+            <p className="text-xs font-mono text-text-muted mb-1">{ticket.id}</p>
+            <h1 className="text-xl font-semibold text-text-primary font-mono">
+              {ticket.file}
+            </h1>
           </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium border ${
-                decision === "approved"
-                  ? "bg-status-resolved-bg text-status-resolved border-status-resolved/40"
-                  : "bg-surface-raised text-text-muted border-border"
-              }`}
-            >
-              {decision === "approved" ? "✓ Approved" : "✗ Rejected"}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <StatusBadge status={ticket.status} />
+            <ConfidenceBar value={ticket.confidence} />
+          </div>
+        </div>
+
+        {/* Reasoning */}
+        <div className="mb-8 bg-surface border border-border rounded-lg p-5">
+          <h3 className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wider">
+            Reasoning
+          </h3>
+          <p className="text-sm text-text-primary leading-relaxed">
+            {ticket.reasoning}
+          </p>
+        </div>
+
+        {/* Diff sides */}
+        <div className="mb-8">
+          <DiffPanel head={ticket.head} incoming={ticket.incoming} />
+        </div>
+
+        {/* Resolution */}
+        <div className="mb-8">
+          <ResolutionBlock code={ticket.resolution} />
+        </div>
+
+        {/* Approve / Reject actions */}
+        <div className="border-t border-border pt-6">
+          {decision === null ? (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={isApproving || isRejecting}
+                aria-label={isApproving ? "Applying resolution…" : "Approve and apply resolution to source file"}
+                className="px-5 py-2.5 rounded-md text-sm font-medium bg-status-resolved-bg text-status-resolved border border-status-resolved/40 hover:bg-status-resolved/20 transition-colors disabled:opacity-50"
+              >
+                {isApproving ? "Applying..." : "✓ Approve"}
+              </button>
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={isApproving || isRejecting}
+                aria-label="Reject this resolution"
+                className="px-5 py-2.5 rounded-md text-sm font-medium bg-surface border border-border text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
+              >
+                {isRejecting ? "Rejecting..." : "✗ Reject"}
+              </button>
+              <p className="text-xs text-text-muted ml-2">
+                Approve to apply this resolution to the source file.
+              </p>
             </div>
-            <button
-              onClick={() => setDecision(null)}
-              className="text-xs text-text-muted hover:text-text-primary transition-colors"
-            >
-              Undo
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium border ${
+                  decision === "approved"
+                    ? "bg-status-resolved-bg text-status-resolved border-status-resolved/40"
+                    : "bg-surface-raised text-text-muted border-border"
+                }`}
+              >
+                {decision === "approved" ? "✓ Approved" : "✗ Rejected"}
+              </div>
+              {/* Only allow undo if the action hasn't been persisted yet */}
+              {decision === "rejected" && !ticket.rejected && (
+                <button
+                  type="button"
+                  onClick={() => setDecision(null)}
+                  aria-label="Undo rejection"
+                  className="text-xs text-text-muted hover:text-text-primary transition-colors"
+                >
+                  Undo
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

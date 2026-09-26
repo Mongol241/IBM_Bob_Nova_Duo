@@ -3,13 +3,18 @@ export type TicketStatus = "auto-resolved" | "needs-review";
 export interface Ticket {
   id: string;
   file: string;
+  startLine?: number;
+  endLine?: number;
   confidence: number;
   resolution: string;
   reasoning: string;
   status: TicketStatus;
+  /** Set to true after the user approves and the CLI apply command runs */
   approved: boolean;
-  /** Phase 1 mock only — the HEAD (current branch) side of the conflict */
+  /** Set to true after the user explicitly rejects this resolution */
+  rejected?: boolean;
+  /** HEAD (current branch) side of the conflict */
   head: string;
-  /** Phase 1 mock only — the Incoming (merging branch) side of the conflict */
+  /** Incoming (merging branch) side of the conflict */
   incoming: string;
 }
