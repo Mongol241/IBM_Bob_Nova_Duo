@@ -78,4 +78,21 @@ export async function collectAllConflicts(repoPath) {
     }
     return allRegions;
 }
+/**
+ * Parse conflicts from an in-memory map of file contents.
+ * Used by the GitHub integration path where files are fetched via API
+ * rather than read from disk.
+ *
+ * @param files - Map from repo-relative forward-slash path → raw file content
+ */
+export function collectConflictsFromStrings(files) {
+    const allRegions = [];
+    for (const [relPath, content] of files) {
+        if (content.includes("<<<<<<<")) {
+            const regions = parseConflicts(content, relPath);
+            allRegions.push(...regions);
+        }
+    }
+    return allRegions;
+}
 //# sourceMappingURL=parser.js.map
