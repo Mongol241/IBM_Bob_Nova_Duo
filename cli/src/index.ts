@@ -28,6 +28,10 @@ program
     "Max number of Bob Shell processes to run in parallel",
     "3"
   )
+  .option(
+    "--batched",
+    "Send all conflicts per file in a single Bob call (lower latency for multi-conflict files)"
+  )
   .action(async (opts) => {
     const threshold = parseFloat(opts.confidence);
     const concurrency = parseInt(opts.concurrency, 10);
@@ -39,6 +43,7 @@ program
       repo: opts.repo,
       confidenceThreshold: threshold,
       concurrency,
+      batched: opts.batched ?? false,
     });
   });
 

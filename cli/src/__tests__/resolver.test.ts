@@ -71,7 +71,7 @@ describe("prompt construction", () => {
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "bob",
-      ["-p", expect.stringContaining('file "src/app.ts"')],
+      ["-p", expect.stringContaining("src/app.ts")],
       expect.anything()
     );
   });

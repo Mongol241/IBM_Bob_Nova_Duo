@@ -7,6 +7,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fetchConflictedFiles, getPrInfo } from '@/lib/github';
 import type { Ticket } from '@/lib/types';
+import { notifySlack } from '@/lib/slack';
 
 const execPromise = promisify(exec);
 
@@ -127,6 +128,7 @@ export async function POST(request: Request) {
     }
 
     await writeTickets(tickets);
+    void notifySlack(tickets);
     return NextResponse.json(tickets);
   } catch (error: any) {
     console.error('Run Resolver Error:', error);
