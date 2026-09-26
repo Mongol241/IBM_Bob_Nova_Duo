@@ -35,12 +35,24 @@ export async function findConflictedFiles(repoPath: string): Promise<string[]> {
   return results;
 }
 
+/**
+ * Replace every conflict marker block in `content` with a neutral placeholder
+ * so Bob sees the file structure without being confused by the markers themselves.
+ */
+function stripConflictMarkers(content: string): string {
+  return content.replace(
+    /^<{7}.*$[\s\S]*?^={7}$[\s\S]*?^>{7}.*$/gm,
+    "// <conflict resolved here>"
+  );
+}
+
 export function parseConflicts(
   fileContent: string,
   relativeFilePath: string
 ): ConflictRegion[] {
   const lines = fileContent.split("\n");
   const regions: ConflictRegion[] = [];
+  const fileContext = stripConflictMarkers(fileContent);
 
   let i = 0;
   while (i < lines.length) {
@@ -77,6 +89,7 @@ export function parseConflicts(
         endLine,
         head: headLines.join("\n").trim(),
         incoming: incomingLines.join("\n").trim(),
+        fileContext,
       });
     } else {
       i++;

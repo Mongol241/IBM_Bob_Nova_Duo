@@ -1,16 +1,45 @@
 import { spawn } from "child_process";
 const TIMEOUT_MS = 60_000;
+/**
+ * Build the Bob Shell prompt for a single conflict.
+ *
+ * When `conflict.repoContext` is present the prompt starts with the
+ * full architectural digest of the repository so Bob can reason about
+ * the design intent of every file — not just the two conflicting lines.
+ *
+ * When `conflict.fileContext` is present Bob also sees the complete file
+ * (with conflict markers neutralised) so it understands the function,
+ * class, and module context surrounding the conflict.
+ */
 function buildPrompt(conflict) {
-    return (`Resolve the merge conflict in file "${conflict.file}" between lines ${conflict.startLine}–${conflict.endLine}.\n` +
+    const sections = [];
+    // ── 1. Repository architecture context ──────────────────────────────────
+    if (conflict.repoContext) {
+        sections.push(conflict.repoContext);
+    }
+    // ── 2. Full file context ─────────────────────────────────────────────────
+    if (conflict.fileContext) {
+        sections.push(`=== FULL FILE: ${conflict.file} ===\n` +
+            `(conflict markers replaced with placeholders so you can see the surrounding code)\n\n` +
+            conflict.fileContext);
+    }
+    // ── 3. The conflict itself ───────────────────────────────────────────────
+    sections.push(`=== MERGE CONFLICT TO RESOLVE ===\n` +
+        `File: ${conflict.file}  (lines ${conflict.startLine}–${conflict.endLine})\n` +
         `\n` +
         `HEAD side:\n` +
         `${conflict.head}\n` +
         `\n` +
         `INCOMING side:\n` +
-        `${conflict.incoming}\n` +
+        `${conflict.incoming}`);
+    // ── 4. Instruction ───────────────────────────────────────────────────────
+    sections.push(`Using the repository architecture and full file context above, choose the correct ` +
+        `resolution. Consider naming conventions, security implications, and design patterns ` +
+        `already established in the codebase.\n` +
         `\n` +
         `Respond with ONLY this JSON object, no markdown fences, no extra text:\n` +
         `{"resolution": string, "confidence": number 0-1, "reasoning": string}`);
+    return sections.join("\n\n");
 }
 function extractJson(raw) {
     const start = raw.indexOf("{");

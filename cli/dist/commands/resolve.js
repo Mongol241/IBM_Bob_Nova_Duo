@@ -1,14 +1,21 @@
 import { collectAllConflicts, collectConflictsFromStrings } from "../parser.js";
 import { callBobShellWithConcurrency } from "../resolver.js";
 import { assembleTickets } from "../assembler.js";
+import { buildRepoContext, buildRepoContextFromStrings } from "../context.js";
 export async function runResolve(opts) {
     try {
-        const conflicts = await collectAllConflicts(opts.repo);
+        const [conflicts, repoContext] = await Promise.all([
+            collectAllConflicts(opts.repo),
+            buildRepoContext(opts.repo),
+        ]);
         if (conflicts.length === 0) {
             console.log(JSON.stringify([], null, 2));
             return;
         }
-        const results = await callBobShellWithConcurrency(conflicts, opts.concurrency);
+        // Stamp architectural context onto every conflict region so buildPrompt
+        // can include it in the Bob prompt.
+        const enrichedConflicts = conflicts.map((c) => ({ ...c, repoContext }));
+        const results = await callBobShellWithConcurrency(enrichedConflicts, opts.concurrency);
         const tickets = assembleTickets(results, opts.confidenceThreshold);
         console.log(JSON.stringify(tickets, null, 2));
     }
@@ -29,7 +36,9 @@ export async function resolveFromStrings(files, opts) {
     const conflicts = collectConflictsFromStrings(files);
     if (conflicts.length === 0)
         return [];
-    const results = await callBobShellWithConcurrency(conflicts, opts.concurrency);
+    const repoContext = buildRepoContextFromStrings(files);
+    const enrichedConflicts = conflicts.map((c) => ({ ...c, repoContext }));
+    const results = await callBobShellWithConcurrency(enrichedConflicts, opts.concurrency);
     return assembleTickets(results, opts.confidenceThreshold);
 }
 //# sourceMappingURL=resolve.js.map
