@@ -13,6 +13,20 @@ export interface ConflictRegion {
   head: string;
   /** Text between ======= and >>>>>>> branch (trimmed) */
   incoming: string;
+
+  // ── Architecture-aware context (optional — populated when repo path is known) ──
+  /**
+   * Full content of the file this conflict lives in, with the conflict markers
+   * replaced by a neutral placeholder so Bob sees the surrounding code clearly.
+   */
+  fileContext?: string;
+  /**
+   * Compact architectural digest of the whole repository: one entry per source
+   * file listing its exports and key declarations. Lets Bob resolve conflicts
+   * with knowledge of the overall codebase design rather than only the two
+   * conflicting lines.
+   */
+  repoContext?: string;
 }
 
 export type TicketStatus = "auto-resolved" | "needs-review";
