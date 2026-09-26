@@ -61,8 +61,8 @@ export default function TicketsPage() {
       ? tickets.filter((t) => t.approved)
       : tickets.filter((t) => t.status === filter);
 
-  const autoCount = tickets.filter((t) => t.status === "auto-resolved").length;
-  const reviewCount = tickets.filter((t) => t.status === "needs-review").length;
+  const autoCount = tickets.filter((t) => t.status === "auto-resolved" && !t.approved).length;
+  const reviewCount = tickets.filter((t) => t.status === "needs-review" && !t.approved).length;
   const approvedCount = tickets.filter((t) => t.approved).length;
 
   return (

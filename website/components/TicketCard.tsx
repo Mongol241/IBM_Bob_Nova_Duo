@@ -28,12 +28,12 @@ export default function TicketCard({ ticket }: TicketCardProps) {
       )}
       {ticket.rejected && !ticket.approved && (
         <span
-          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-surface-raised border border-border flex items-center justify-center"
+          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-red-500 border border-red-600 flex items-center justify-center"
           title="Rejected"
           aria-label="Rejected"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-            <path d="M3 3l4 4M7 3l-4 4" stroke="#6b8ab0" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M3 3l4 4M7 3l-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </span>
       )}
@@ -42,7 +42,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         <span className="text-xs font-mono text-text-muted/50">
           {ticket.id}
         </span>
-        <StatusBadge status={ticket.status} />
+        <StatusBadge status={ticket.status} approved={ticket.approved} rejected={ticket.rejected} />
       </div>
 
       <div className="flex-1 flex flex-col justify-between">
