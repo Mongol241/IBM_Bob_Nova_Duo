@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const repoPath = process.env.REPO_PATH
       ? path.resolve(process.cwd(), process.env.REPO_PATH)
       : DEFAULT_REPO_PATH;
-    await execPromise(`node "${cliPath}" apply --file "${tmpFile}" --id ${ticketId} --repo "${repoPath}"`);
+    await execPromise(`node "${cliPath}" apply --file "${tmpFile}" --id "${ticketId}" --repo "${repoPath}"`);
 
     // Mark approved in storage
     const updatedTickets = tickets.map(t =>

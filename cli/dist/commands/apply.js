@@ -26,7 +26,7 @@ export async function runApply(opts) {
     }
     // 4. Read the source file — resolve relative to repoRoot, not process.cwd()
     const root = opts.repoRoot ?? process.cwd();
-    const sourcePath = resolve(root, ticket.file.replace(/\//g, "/"));
+    const sourcePath = resolve(root, ticket.file);
     let sourceRaw;
     try {
         sourceRaw = await readFile(sourcePath, "utf-8");
@@ -64,6 +64,10 @@ export async function runApply(opts) {
         throw new Error(`Closing conflict marker ">>>>>>>" not found after line ${startIdx + 1} in ${ticket.file}.`);
     }
     // 8. Replace [startIdx..endIdx] with resolution lines
+    if (!ticket.resolution || ticket.resolution.trim() === "") {
+        throw new Error(`Ticket "${opts.conflictId}" has an empty resolution — cannot apply. ` +
+            `The conflict was not resolved by Bob (check ticket status and reasoning).`);
+    }
     const resolutionLines = ticket.resolution.split("\n").map((l) => l.replace(/\r$/, ""));
     lines.splice(startIdx, endIdx - startIdx + 1, ...resolutionLines);
     // 9. Write back, restoring original line endings
@@ -71,7 +75,7 @@ export async function runApply(opts) {
         ? lines.map((l) => l.replace(/\r$/, "")).join("\r\n")
         : lines.join("\n");
     await writeFile(sourcePath, finalOutput, "utf-8");
-    // 10. Success message
-    console.log(`Applied ${opts.conflictId}: ${ticket.file} (lines ${ticket.startLine}–${ticket.endLine})`);
+    // 10. Success message — stderr only (stdout is JSON-only per CLI contract)
+    console.error(`Applied ${opts.conflictId}: ${ticket.file} (lines ${ticket.startLine}–${ticket.endLine})`);
 }
 //# sourceMappingURL=apply.js.map

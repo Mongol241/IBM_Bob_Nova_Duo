@@ -24,7 +24,7 @@ function extractJson(raw) {
 export async function callBobShell(conflict) {
     const prompt = buildPrompt(conflict);
     return new Promise((resolve, reject) => {
-        const child = spawn("bob", ["-p", prompt], { shell: false });
+        const child = spawn("bob", ["-p", prompt], { shell: true });
         if (!child.stdout || !child.stderr) {
             reject(new Error("child process has no stdout/stderr — stdio must be 'pipe'"));
             return;
