@@ -20,6 +20,10 @@ export default function TicketsPage() {
   const [filter, setFilter] = useState<FilterValue>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  const [showGitHubForm, setShowGitHubForm] = useState(false);
+  const [ghOwner, setGhOwner] = useState("");
+  const [ghRepo, setGhRepo] = useState("");
+  const [ghPr, setGhPr] = useState("");
   const { toasts, addToast, dismiss } = useToast();
 
   const fetchTickets = async () => {
@@ -39,10 +43,21 @@ export default function TicketsPage() {
     fetchTickets();
   }, []);
 
-  const handleRunResolver = async () => {
+  const handleRunResolver = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const prNumber = parseInt(ghPr, 10);
+    if (!ghOwner.trim() || !ghRepo.trim() || isNaN(prNumber)) {
+      addToast("Please fill in owner, repo, and a valid PR number.");
+      return;
+    }
     setIsRunning(true);
+    setShowGitHubForm(false);
     try {
-      const res = await fetch("/api/run", { method: "POST" });
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repo_owner: ghOwner.trim(), repo_name: ghRepo.trim(), pr_number: prNumber }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Resolver failed");
       await fetchTickets();
@@ -99,41 +114,82 @@ export default function TicketsPage() {
                 </p>
               </div>
 
-              <button
-                onClick={handleRunResolver}
-                disabled={isRunning}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  isRunning
-                    ? "bg-surface text-text-muted opacity-50 cursor-not-allowed"
-                    : "bg-surface border border-border text-text-primary hover:bg-surface-raised"
-                }`}
-              >
-                {isRunning ? (
-                  <svg
-                    className="animate-spin w-4 h-4 text-text-muted"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
+              <div className="flex flex-col items-end gap-2">
+                <button
+                  onClick={() => setShowGitHubForm((v) => !v)}
+                  disabled={isRunning}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    isRunning
+                      ? "bg-surface text-text-muted opacity-50 cursor-not-allowed"
+                      : "bg-surface border border-border text-text-primary hover:bg-surface-raised"
+                  }`}
+                >
+                  {isRunning ? (
+                    <svg
+                      className="animate-spin w-4 h-4 text-text-muted"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      />
+                    </svg>
+                  ) : (
+                    <span className="text-base leading-none">▶</span>
+                  )}
+                  {isRunning ? "Resolving..." : "Run Resolver"}
+                </button>
+
+                {showGitHubForm && !isRunning && (
+                  <form
+                    onSubmit={handleRunResolver}
+                    className="flex flex-col gap-2 p-4 bg-surface border border-border rounded-lg shadow-lg w-72"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">
+                      GitHub PR
+                    </p>
+                    <input
+                      type="text"
+                      placeholder="Owner (e.g. acme)"
+                      value={ghOwner}
+                      onChange={(e) => setGhOwner(e.target.value)}
+                      className="px-3 py-1.5 rounded-md text-sm bg-surface-raised border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-blue"
                     />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    <input
+                      type="text"
+                      placeholder="Repo (e.g. my-project)"
+                      value={ghRepo}
+                      onChange={(e) => setGhRepo(e.target.value)}
+                      className="px-3 py-1.5 rounded-md text-sm bg-surface-raised border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-blue"
                     />
-                  </svg>
-                ) : (
-                  <span className="text-base leading-none">▶</span>
+                    <input
+                      type="number"
+                      placeholder="PR number (e.g. 42)"
+                      value={ghPr}
+                      onChange={(e) => setGhPr(e.target.value)}
+                      min={1}
+                      className="px-3 py-1.5 rounded-md text-sm bg-surface-raised border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-blue"
+                    />
+                    <button
+                      type="submit"
+                      className="mt-1 px-4 py-2 rounded-md text-sm font-medium bg-accent-blue text-white hover:opacity-90 transition-opacity"
+                    >
+                      Resolve PR Conflicts
+                    </button>
+                  </form>
                 )}
-                {isRunning ? "Resolving..." : "Run Resolver"}
-              </button>
+              </div>
             </div>
           </div>
 
