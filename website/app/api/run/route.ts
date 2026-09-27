@@ -60,7 +60,21 @@ export async function POST(request: Request) {
       // ── Demo mode: return golden fixture ────────────────────────────────
       const goldenPath = path.join(process.cwd(), 'golden_tickets.json');
       const data = await fs.readFile(goldenPath, 'utf8');
-      tickets = (JSON.parse(data) as any[]).map((t: any) => ({ approved: false, ...t }));
+      const githubContext = isGitHubMode
+        ? {
+            githubOwner: body.repo_owner!,
+            githubRepo: body.repo_name!,
+            githubPrNumber: body.pr_number!,
+            githubBranch: 'main',
+            githubBlobSha: '',
+          }
+        : {};
+      tickets = (JSON.parse(data) as any[]).map((t: any) => ({
+        approved: false,
+        rejected: false,
+        ...t,
+        ...githubContext,
+      }));
     } else if (isGitHubMode) {
       // ── GitHub mode ──────────────────────────────────────────────────────
       const owner = body.repo_owner!;

@@ -52,6 +52,11 @@ export async function POST(request: Request) {
       );
     }
 
+    if (process.env.DEMO_MODE === 'true') {
+      // In demo mode skip the actual GitHub push
+      return NextResponse.json({ success: true, demo: true });
+    }
+
     await pushResolvedFile({
       owner: ticket.githubOwner,
       repo: ticket.githubRepo,

@@ -55,7 +55,7 @@ export default function TicketDetailPage({
       if (!res.ok) throw new Error(data.error ?? "Failed to apply resolution");
       setDecision("approved");
       setTicket((prev) => prev ? { ...prev, approved: true, rejected: false } : null);
-      addToast("Resolution applied to source file", "success");
+      addToast("Resolution approved successfully", "success");
     } catch (error: any) {
       addToast(error.message ?? "Failed to approve ticket");
     } finally {

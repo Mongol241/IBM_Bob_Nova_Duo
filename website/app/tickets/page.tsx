@@ -43,6 +43,25 @@ export default function TicketsPage() {
     fetchTickets();
   }, []);
 
+  const handleRunDemo = async () => {
+    setIsRunning(true);
+    try {
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Resolver failed");
+      await fetchTickets();
+      addToast(`Loaded ${data.length} demo conflict${data.length !== 1 ? "s" : ""}`, "success");
+    } catch (error: any) {
+      addToast(error.message ?? "Failed to run demo");
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   const handleRunResolver = async (e: React.FormEvent) => {
     e.preventDefault();
     const prNumber = parseInt(ghPr, 10);
@@ -115,6 +134,42 @@ export default function TicketsPage() {
               </div>
 
               <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-row gap-2">
+                <button
+                  onClick={handleRunDemo}
+                  disabled={isRunning}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    isRunning
+                      ? "bg-accent-blue text-white opacity-50 cursor-not-allowed"
+                      : "bg-accent-blue text-white hover:opacity-90"
+                  }`}
+                >
+                  {isRunning ? (
+                    <svg
+                      className="animate-spin w-4 h-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      />
+                    </svg>
+                  ) : (
+                    <span className="text-base leading-none">🎬</span>
+                  )}
+                  {isRunning ? "Running..." : "Demo"}
+                </button>
                 <button
                   onClick={() => setShowGitHubForm((v) => !v)}
                   disabled={isRunning}
@@ -150,6 +205,7 @@ export default function TicketsPage() {
                   )}
                   {isRunning ? "Resolving..." : "Run Resolver"}
                 </button>
+                </div>
 
                 {showGitHubForm && !isRunning && (
                   <form

@@ -46,35 +46,43 @@ export async function POST(request: Request) {
         );
       }
 
-      await pushResolvedFile({
-        owner: ticket.githubOwner,
-        repo: ticket.githubRepo,
-        branch: ticket.githubBranch,
-        filePath: ticket.file,
-        resolvedContent: ticket.resolution,
-        blobSha: ticket.githubBlobSha ?? '',
-      });
+      if (process.env.DEMO_MODE !== 'true') {
+        await pushResolvedFile({
+          owner: ticket.githubOwner,
+          repo: ticket.githubRepo,
+          branch: ticket.githubBranch,
+          filePath: ticket.file,
+          resolvedContent: ticket.resolution,
+          blobSha: ticket.githubBlobSha ?? '',
+        });
+      }
+      // In demo mode we skip the actual GitHub push and just mark approved
     } else {
       // ── Local mode (original behaviour) ───────────────────────────────────
-      // Write the current ticket state to a temp file for the CLI to consume
-      const tmpFile = path.join(DATA_DIR, 'current_tickets.json');
-      await fs.mkdir(DATA_DIR, { recursive: true }); // ensure dir exists
-      await fs.writeFile(tmpFile, JSON.stringify(tickets, null, 2));
+      // In demo mode skip the CLI apply entirely — the demo-repo may not have
+      // conflict markers for every golden ticket, and no real file patching is
+      // needed for a demo. Just fall through to mark approved below.
+      if (process.env.DEMO_MODE !== 'true') {
+        // Write the current ticket state to a temp file for the CLI to consume
+        const tmpFile = path.join(DATA_DIR, 'current_tickets.json');
+        await fs.mkdir(DATA_DIR, { recursive: true }); // ensure dir exists
+        await fs.writeFile(tmpFile, JSON.stringify(tickets, null, 2));
 
-      const cliPath = process.env.CLI_PATH
-        ? path.resolve(process.cwd(), process.env.CLI_PATH)
-        : DEFAULT_CLI_PATH;
-      const repoPath = process.env.REPO_PATH
-        ? path.resolve(process.cwd(), process.env.REPO_PATH)
-        : DEFAULT_REPO_PATH;
-      await execPromise(
-        `node "${cliPath}" apply --file "${tmpFile}" --id "${ticketId}" --repo "${repoPath}"`
-      );
+        const cliPath = process.env.CLI_PATH
+          ? path.resolve(process.cwd(), process.env.CLI_PATH)
+          : DEFAULT_CLI_PATH;
+        const repoPath = process.env.REPO_PATH
+          ? path.resolve(process.cwd(), process.env.REPO_PATH)
+          : DEFAULT_REPO_PATH;
+        await execPromise(
+          `node "${cliPath}" apply --file "${tmpFile}" --id "${ticketId}" --repo "${repoPath}"`
+        );
+      }
     }
 
-    // Mark approved in storage regardless of mode
+    // Mark approved in storage regardless of mode; clear any prior rejection
     const updatedTickets = tickets.map(t =>
-      t.id === ticketId ? { ...t, approved: true } : t
+      t.id === ticketId ? { ...t, approved: true, rejected: false } : t
     );
     await writeTickets(updatedTickets);
 
