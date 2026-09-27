@@ -12,11 +12,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy package files first for better caching
-COPY cli/package*.json ./cli/
-COPY website/package*.json ./website/
+# Copy all source code first
+COPY . .
 
-# Install dependencies for the CLI
+# Install dependencies and build the CLI
 WORKDIR /app/cli
 RUN npm install
 RUN npm run build
@@ -38,7 +37,6 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install IBM Bob Shell binary
-# We use the official script. We specify the package manager to avoid interactive prompts.
 RUN curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash -s -- --pm npm
 
 WORKDIR /app
