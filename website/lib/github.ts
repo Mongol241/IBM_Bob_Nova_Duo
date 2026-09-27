@@ -96,11 +96,13 @@ async function fetchFileContent(
  * GitHub only creates that ref when the PR is auto-mergeable (`mergeable: true`).
  * When there are actual conflicts (`mergeable: false`), the ref does not exist.
  *
- * Strategy:
- *   1. List all files changed in the PR.
- *   2. For each file, fetch the content from the BASE branch and the HEAD branch.
- *   3. Run `git merge-file` with an empty ancestor to produce conflict markers.
- *   4. Keep only files where the merge produced conflicts.
+ * Three-way merge inputs:
+ *   - ancestor : file at the merge base (common ancestor of base branch and PR branch)
+ *   - ours     : file at baseSha  (current tip of the target/base branch)
+ *   - theirs   : file at headSha  (current tip of the PR branch)
+ *
+ * Using the actual merge base as ancestor is critical — using the base-branch tip
+ * as both ours and ancestor produces false "clean merges" when only one side changed.
  */
 export async function fetchConflictedFiles(
   owner: string,
@@ -110,6 +112,16 @@ export async function fetchConflictedFiles(
   baseSha: string
 ): Promise<PrFile[]> {
   const octokit = getOctokit();
+
+  // Find the true merge base (common ancestor) of the two branch tips.
+  // GitHub's compare API returns the merge_base_commit for any two refs.
+  const { data: compare } = await octokit.repos.compareCommits({
+    owner,
+    repo,
+    base: baseSha,
+    head: headSha,
+  });
+  const mergeBaseSha: string = compare.merge_base_commit.sha;
 
   const { data: prFiles } = await octokit.pulls.listFiles({
     owner,
@@ -125,34 +137,33 @@ export async function fetchConflictedFiles(
     for (const f of prFiles) {
       if (!f.filename || f.status === 'removed') continue;
 
-      // Fetch the file at both sides
-      const [baseFile, headFile] = await Promise.all([
+      // Fetch the file at all three points: ancestor, ours (base tip), theirs (PR tip)
+      const [ancestorFile, baseFile, headFile] = await Promise.all([
+        fetchFileContent(octokit, owner, repo, f.filename, mergeBaseSha),
         fetchFileContent(octokit, owner, repo, f.filename, baseSha),
         fetchFileContent(octokit, owner, repo, f.filename, headSha),
       ]);
 
-      // If either side is missing the file was added/removed unilaterally — no conflict
-      if (!baseFile || !headFile) continue;
+      // Need all three sides for a meaningful three-way merge
+      if (!ancestorFile || !baseFile || !headFile) continue;
 
-      // If both sides are identical there's nothing to merge
+      // If ours and theirs are already identical, no conflict possible
       if (baseFile.content === headFile.content) continue;
 
-      // Write both sides to temp files and run git merge-file
-      // We use the base as the "ancestor" AND "ours", head as "theirs" so that
-      // any divergence from the base shows up as a conflict.
+      // Write the three sides to temp files
       const safeBase = f.filename.replace(/\//g, '_');
-      const oursPath = path.join(tmpDir, `${safeBase}.ours`);
+      const oursPath     = path.join(tmpDir, `${safeBase}.ours`);
       const ancestorPath = path.join(tmpDir, `${safeBase}.ancestor`);
-      const theirsPath = path.join(tmpDir, `${safeBase}.theirs`);
+      const theirsPath   = path.join(tmpDir, `${safeBase}.theirs`);
 
       await Promise.all([
-        fs.writeFile(oursPath, baseFile.content, 'utf8'),
-        fs.writeFile(ancestorPath, baseFile.content, 'utf8'),
-        fs.writeFile(theirsPath, headFile.content, 'utf8'),
+        fs.writeFile(oursPath,     baseFile.content,     'utf8'),
+        fs.writeFile(ancestorPath, ancestorFile.content, 'utf8'),
+        fs.writeFile(theirsPath,   headFile.content,     'utf8'),
       ]);
 
-      // git merge-file exits 0 (clean), positive N (N conflicts), or negative (error)
-      // It writes the result in-place to oursPath
+      // git merge-file exits 0 (clean merge), positive N (N conflict hunks), negative (error).
+      // It writes the result in-place into oursPath.
       try {
         await execFilePromise('git', [
           'merge-file',

@@ -45,6 +45,14 @@ export async function POST(request: Request) {
     typeof body.repo_name === 'string' &&
     typeof body.pr_number === 'number';
 
+  // Fail fast with a clear message if the token is missing in GitHub mode
+  if (isGitHubMode && process.env.DEMO_MODE !== 'true' && !process.env.GITHUB_TOKEN) {
+    return NextResponse.json(
+      { error: 'GITHUB_TOKEN is not configured. Add it as an environment variable in Railway.' },
+      { status: 500 }
+    );
+  }
+
   try {
     let tickets: Ticket[];
 
