@@ -12,19 +12,11 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
 
   const valid = await verifyPassword(password, user.passwordHash);
 
-<<<<<<< HEAD
-  if (!valid) {
+if (!valid) {
     // Generic message — do not hint that the username exists
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
-=======
-  if (!valid) {
-    // Include username for friendlier UX — but leaks username enumeration
-    res.status(401).json({ error: `Invalid password for user "${username}"` });
-    return;
-  }
->>>>>>> incoming
 
   res.status(200).json({ token: user.sessionToken });
 }

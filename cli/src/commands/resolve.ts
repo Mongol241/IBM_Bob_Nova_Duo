@@ -1,5 +1,5 @@
 import { collectAllConflicts, collectConflictsFromStrings } from "../parser.js";
-import { callBobShellWithConcurrency } from "../resolver.js";
+import { callBobShellWithConcurrency, callBobShellBatchedByFile } from "../resolver.js";
 import { assembleTickets } from "../assembler.js";
 import { buildRepoContext, buildRepoContextFromStrings } from "../context.js";
 import type { Ticket } from "../types.js";
@@ -8,6 +8,7 @@ export async function runResolve(opts: {
   repo: string;
   confidenceThreshold: number;
   concurrency: number;
+  batched?: boolean;
 }): Promise<void> {
   try {
     const [conflicts, repoContext] = await Promise.all([
@@ -24,7 +25,9 @@ export async function runResolve(opts: {
     // can include it in the Bob prompt.
     const enrichedConflicts = conflicts.map((c) => ({ ...c, repoContext }));
 
-    const results = await callBobShellWithConcurrency(enrichedConflicts, opts.concurrency);
+    const results = opts.batched
+      ? await callBobShellBatchedByFile(enrichedConflicts, opts.concurrency)
+      : await callBobShellWithConcurrency(enrichedConflicts, opts.concurrency);
     const tickets = assembleTickets(results, opts.confidenceThreshold);
 
     console.log(JSON.stringify(tickets, null, 2));
@@ -44,7 +47,7 @@ export async function runResolve(opts: {
  */
 export async function resolveFromStrings(
   files: Map<string, string>,
-  opts: { confidenceThreshold: number; concurrency: number }
+  opts: { confidenceThreshold: number; concurrency: number; batched?: boolean }
 ): Promise<Ticket[]> {
   const conflicts = collectConflictsFromStrings(files);
   if (conflicts.length === 0) return [];
@@ -52,6 +55,8 @@ export async function resolveFromStrings(
   const repoContext = buildRepoContextFromStrings(files);
   const enrichedConflicts = conflicts.map((c) => ({ ...c, repoContext }));
 
-  const results = await callBobShellWithConcurrency(enrichedConflicts, opts.concurrency);
+  const results = opts.batched
+    ? await callBobShellBatchedByFile(enrichedConflicts, opts.concurrency)
+    : await callBobShellWithConcurrency(enrichedConflicts, opts.concurrency);
   return assembleTickets(results, opts.confidenceThreshold);
 }

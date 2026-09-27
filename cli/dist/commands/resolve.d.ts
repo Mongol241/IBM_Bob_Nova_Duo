@@ -3,6 +3,7 @@ export declare function runResolve(opts: {
     repo: string;
     confidenceThreshold: number;
     concurrency: number;
+    batched?: boolean;
 }): Promise<void>;
 /**
  * Resolve conflicts from an in-memory file map (GitHub integration path).
@@ -15,5 +16,6 @@ export declare function runResolve(opts: {
 export declare function resolveFromStrings(files: Map<string, string>, opts: {
     confidenceThreshold: number;
     concurrency: number;
+    batched?: boolean;
 }): Promise<Ticket[]>;
 //# sourceMappingURL=resolve.d.ts.map

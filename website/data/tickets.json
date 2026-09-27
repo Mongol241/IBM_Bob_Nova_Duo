@@ -1,5 +1,6 @@
 [
   {
+    "approved": false,
     "id": "conflict-01",
     "file": "README.md",
     "startLine": 13,
@@ -12,6 +13,7 @@
     "status": "auto-resolved"
   },
   {
+    "approved": false,
     "id": "conflict-02",
     "file": "src/billing.ts",
     "startLine": 20,
@@ -24,6 +26,7 @@
     "status": "needs-review"
   },
   {
+    "approved": true,
     "id": "conflict-03",
     "file": "src/auth.ts",
     "startLine": 15,
@@ -36,6 +39,7 @@
     "status": "auto-resolved"
   },
   {
+    "approved": false,
     "id": "conflict-04",
     "file": "src/utils.ts",
     "startLine": 9,
@@ -48,6 +52,7 @@
     "status": "needs-review"
   },
   {
+    "approved": true,
     "id": "conflict-05",
     "file": "package-lock.json",
     "startLine": 13,

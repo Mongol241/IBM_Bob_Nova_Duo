@@ -13,6 +13,7 @@ program
     .requiredOption("--repo <path>", "Path to the git repository to scan")
     .option("--confidence <number>", "Confidence threshold for auto-resolved status (0–1)", "0.8")
     .option("--concurrency <number>", "Max number of Bob Shell processes to run in parallel", "3")
+    .option("--batched", "Send all conflicts per file in a single Bob call (lower latency for multi-conflict files)")
     .action(async (opts) => {
     const threshold = parseFloat(opts.confidence);
     const concurrency = parseInt(opts.concurrency, 10);
@@ -24,6 +25,7 @@ program
         repo: opts.repo,
         confidenceThreshold: threshold,
         concurrency,
+        batched: opts.batched ?? false,
     });
 });
 program

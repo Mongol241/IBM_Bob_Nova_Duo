@@ -143,3 +143,170 @@ export async function callBobShellWithConcurrency(
 
   return results;
 }
+
+// ── Batch timeout: 60s base + 30s per additional conflict, capped at 300s ──
+const BATCH_TIMEOUT_MAX_MS = 300_000;
+
+function buildBatchPrompt(conflicts: ConflictRegion[], filePath: string): string {
+  const sections: string[] = [];
+  const first = conflicts[0];
+
+  // ── 1. Repository architecture context (from first conflict) ────────────
+  if (first.repoContext) {
+    sections.push(first.repoContext);
+  }
+
+  // ── 2. Full file context (from first conflict) ───────────────────────────
+  if (first.fileContext) {
+    sections.push(
+      `=== FULL FILE: ${filePath} ===\n` +
+      `(conflict markers replaced with placeholders so you can see the surrounding code)\n\n` +
+      first.fileContext
+    );
+  }
+
+  // ── 3. Each conflict, numbered ───────────────────────────────────────────
+  const n = conflicts.length;
+  for (let i = 0; i < n; i++) {
+    const c = conflicts[i];
+    sections.push(
+      `=== CONFLICT ${i + 1} of ${n} ===\n` +
+      `File: ${c.file}  (lines ${c.startLine}–${c.endLine})\n` +
+      `\n` +
+      `HEAD side:\n` +
+      `${c.head}\n` +
+      `\n` +
+      `INCOMING side:\n` +
+      `${c.incoming}`
+    );
+  }
+
+  // ── 4. Instruction ───────────────────────────────────────────────────────
+  sections.push(
+    `Using the repository architecture and full file context above, resolve every conflict.\n` +
+    `\n` +
+    `Respond with ONLY a JSON array with exactly ${n} element(s), one per conflict in order.\n` +
+    `Each element must have exactly these keys: "resolution" (string), "confidence" (number 0-1), "reasoning" (string).\n` +
+    `No markdown fences, no extra text, no wrapping object — just the raw JSON array.`
+  );
+
+  return sections.join("\n\n");
+}
+
+function extractJsonArray(raw: string): BobResolution[] {
+  const start = raw.indexOf("[");
+  const end = raw.lastIndexOf("]");
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(`No JSON array found in output: ${raw}`);
+  }
+  return JSON.parse(raw.slice(start, end + 1)) as BobResolution[];
+}
+
+export async function callBobShellBatched(
+  conflicts: ConflictRegion[],
+  filePath: string
+): Promise<Array<{ conflict: ConflictRegion; result: BobResolution | null; error: string | null }>> {
+  if (conflicts.length === 0) return [];
+
+  const prompt = buildBatchPrompt(conflicts, filePath);
+  const timeoutMs = Math.min(
+    TIMEOUT_MS + (conflicts.length - 1) * 30_000,
+    BATCH_TIMEOUT_MAX_MS
+  );
+
+  const fallback = (error: string): Array<{ conflict: ConflictRegion; result: BobResolution | null; error: string | null }> =>
+    conflicts.map((conflict) => ({ conflict, result: null, error }));
+
+  return new Promise((resolve) => {
+    const child = spawn("bob", ["-p", prompt], { shell: true });
+
+    if (!child.stdout || !child.stderr) {
+      resolve(fallback("child process has no stdout/stderr — stdio must be 'pipe'"));
+      return;
+    }
+
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+
+    child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
+    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+
+    const timer = setTimeout(() => {
+      child.kill();
+      resolve(fallback(`bob process timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    child.on("close", (code: number | null) => {
+      clearTimeout(timer);
+
+      if (code !== 0) {
+        const stderr = Buffer.concat(stderrChunks).toString("utf8");
+        resolve(fallback(stderr || `bob exited with code ${String(code)}`));
+        return;
+      }
+
+      const stdout = Buffer.concat(stdoutChunks).toString("utf8");
+      let parsed: BobResolution[];
+      try {
+        parsed = extractJsonArray(stdout);
+      } catch (err) {
+        resolve(fallback(err instanceof Error ? err.message : String(err)));
+        return;
+      }
+
+      if (parsed.length !== conflicts.length) {
+        resolve(fallback("batch response length mismatch"));
+        return;
+      }
+
+      resolve(
+        conflicts.map((conflict, i) => ({ conflict, result: parsed[i], error: null }))
+      );
+    });
+
+    child.on("error", (err: Error) => {
+      clearTimeout(timer);
+      resolve(fallback(err.message));
+    });
+  });
+}
+
+export async function callBobShellBatchedByFile(
+  conflicts: ConflictRegion[],
+  maxConcurrent: number
+): Promise<Array<{ conflict: ConflictRegion; result: BobResolution | null; error: string | null }>> {
+  if (conflicts.length === 0) return [];
+
+  // Group conflicts by file, preserving original indices
+  const fileGroups = new Map<string, Array<{ index: number; conflict: ConflictRegion }>>();
+  for (let i = 0; i < conflicts.length; i++) {
+    const conflict = conflicts[i];
+    const key = conflict.file;
+    if (!fileGroups.has(key)) fileGroups.set(key, []);
+    fileGroups.get(key)!.push({ index: i, conflict });
+  }
+
+  const fileKeys = Array.from(fileGroups.keys());
+  const results: Array<{ conflict: ConflictRegion; result: BobResolution | null; error: string | null }> =
+    new Array(conflicts.length);
+
+  let nextGroupIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextGroupIndex < fileKeys.length) {
+      const gi = nextGroupIndex++;
+      const key = fileKeys[gi];
+      const group = fileGroups.get(key)!;
+      const groupConflicts = group.map((e) => e.conflict);
+      const batchResults = await callBobShellBatched(groupConflicts, key);
+      for (let j = 0; j < group.length; j++) {
+        results[group[j].index] = batchResults[j];
+      }
+    }
+  }
+
+  const poolSize = Math.max(1, Math.min(maxConcurrent, fileKeys.length));
+  await Promise.all(Array.from({ length: poolSize }, () => worker()));
+
+  return results;
+}
