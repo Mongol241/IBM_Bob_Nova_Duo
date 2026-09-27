@@ -53,7 +53,7 @@ function extractJson(raw) {
 export async function callBobShell(conflict) {
     const prompt = buildPrompt(conflict);
     return new Promise((resolve, reject) => {
-        const child = spawn("bob", ["-p", prompt]);
+        const child = spawn("bob", ["--auth-method", "api-key", "--accept-license", "-p", prompt]);
         if (!child.stdout || !child.stderr) {
             reject(new Error("child process has no stdout/stderr — stdio must be 'pipe'"));
             return;
@@ -162,7 +162,7 @@ export async function callBobShellBatched(conflicts, filePath) {
     const timeoutMs = Math.min(TIMEOUT_MS + (conflicts.length - 1) * 30_000, BATCH_TIMEOUT_MAX_MS);
     const fallback = (error) => conflicts.map((conflict) => ({ conflict, result: null, error }));
     return new Promise((resolve) => {
-        const child = spawn("bob", ["-p", prompt]);
+        const child = spawn("bob", ["--auth-method", "api-key", "--accept-license", "-p", prompt]);
         if (!child.stdout || !child.stderr) {
             resolve(fallback("child process has no stdout/stderr — stdio must be 'pipe'"));
             return;
