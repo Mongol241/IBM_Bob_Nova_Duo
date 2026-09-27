@@ -50,12 +50,14 @@ export async function getPrInfo(
 
 /**
  * Fetch the raw content of every file in a PR that contains conflict markers.
- * The content is fetched from the head commit of the PR branch, not the merge commit,
- * because the merge commit content is what already carries the `<<<<<<<` markers.
  *
- * Strategy: list all PR files, then for each changed file fetch its raw blob from the
- * PR's head commit. We look for conflict markers in the content to filter which files
- * actually need resolving.
+ * Conflict markers (`<<<<<<<`) only exist in GitHub's test merge commit, exposed at
+ * `refs/pull/<PR>/merge`. The PR branch's head commit contains clean source — no markers.
+ *
+ * Strategy:
+ *   1. Fetch content from `refs/pull/<N>/merge` to detect conflict markers.
+ *   2. For each conflicted file, also fetch the blob SHA from the PR head so we have
+ *      the correct SHA to pass when pushing the resolution back to the branch.
  */
 export async function fetchConflictedFiles(
   owner: string,
@@ -73,35 +75,45 @@ export async function fetchConflictedFiles(
     per_page: 100,
   });
 
-  // Fetch the raw content of each file at the PR head commit
+  const mergeRef = `refs/pull/${prNumber}/merge`;
   const results: PrFile[] = [];
 
   for (const f of prFiles) {
     if (!f.filename || f.status === 'removed') continue;
 
+    // Step 1: fetch from the merge ref — this is where conflict markers live
     let content: string;
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path: f.filename,
+        ref: mergeRef,
+      });
+      if (Array.isArray(data) || data.type !== 'file') continue;
+      content = Buffer.from(data.content, 'base64').toString('utf8');
+    } catch {
+      continue;
+    }
+
+    if (!content.includes('<<<<<<<')) continue;
+
+    // Step 2: fetch the blob SHA from the PR head branch (needed for the push-back)
     let blobSha: string;
     try {
       const { data } = await octokit.repos.getContent({
         owner,
         repo,
         path: f.filename,
-        ref: headSha, // commit SHA from the PR head — valid git ref
+        ref: headSha,
       });
-
-      // getContent returns an object with a content field (base64) for files
       if (Array.isArray(data) || data.type !== 'file') continue;
-
       blobSha = data.sha;
-      content = Buffer.from(data.content, 'base64').toString('utf8');
     } catch {
-      // If we can't fetch this file, skip it
       continue;
     }
 
-    if (content.includes('<<<<<<<')) {
-      results.push({ filename: f.filename, content, blobSha });
-    }
+    results.push({ filename: f.filename, content, blobSha });
   }
 
   return results;
