@@ -15,19 +15,16 @@ WORKDIR /app
 # Copy all source code
 COPY . .
 
-# Fix permissions for node_modules if they were committed
-# and ensure we have a clean slate for the build
-RUN chmod -R +x node_modules/.bin 2>/dev/null || true
-
 # Install dependencies and build the CLI
 WORKDIR /app/cli
-# Use npm ci for a clean, deterministic install from lockfile
 RUN npm install
+RUN chmod -R +x node_modules/.bin
 RUN npm run build
 
 # Install dependencies and build the Website
 WORKDIR /app/website
 RUN npm install
+RUN chmod -R +x node_modules/.bin
 RUN npm run build
 
 # Final Stage
