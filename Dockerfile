@@ -45,6 +45,7 @@ WORKDIR /app
 
 # Copy build artifacts from builder stage
 COPY --from=builder /app/cli/dist ./cli/dist
+COPY --from=builder /app/cli/node_modules ./cli/node_modules
 COPY --from=builder /app/website/.next ./website/.next
 COPY --from=builder /app/website/public ./website/public
 COPY --from=builder /app/website/node_modules ./website/node_modules
