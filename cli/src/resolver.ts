@@ -70,7 +70,7 @@ export async function callBobShell(conflict: ConflictRegion): Promise<BobResolut
   const prompt = buildPrompt(conflict);
 
   return new Promise<BobResolution>((resolve, reject) => {
-    const child = spawn("bob", ["-p", prompt], { shell: true });
+    const child = spawn("bob", ["-p", prompt]);
 
     if (!child.stdout || !child.stderr) {
       reject(new Error("child process has no stdout/stderr — stdio must be 'pipe'"));
@@ -218,7 +218,7 @@ export async function callBobShellBatched(
     conflicts.map((conflict) => ({ conflict, result: null, error }));
 
   return new Promise((resolve) => {
-    const child = spawn("bob", ["-p", prompt], { shell: true });
+    const child = spawn("bob", ["-p", prompt]);
 
     if (!child.stdout || !child.stderr) {
       resolve(fallback("child process has no stdout/stderr — stdio must be 'pipe'"));
