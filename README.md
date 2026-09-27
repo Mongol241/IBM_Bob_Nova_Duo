@@ -4,7 +4,7 @@
 
 Merge conflicts are one of the most tedious parts of working on a shared codebase. Someone has to stop what they're doing, open the file, figure out what each side of the conflict was trying to do, and manually stitch together a fix — even when the conflict is something trivial like a formatting difference or a lockfile bump.
 
-This project takes a first pass at that work for you. It scans a repository for merge conflicts, sends each one to an AI model for a suggested resolution, and turns the results into a simple list of "tickets" you can review. Conflicts the model is confident about are flagged as **auto-resolved**; anything murkier is flagged as **needs review**, with the model's reasoning attached so a human can make the final call quickly instead of starting from scratch.
+This project takes a first pass at that work for you. It scans a repository for merge conflicts, sends each one to IBM BOB for a suggested resolution, and turns the results into a simple list of "tickets" you can review. Conflicts the model is confident about are flagged as **auto-resolved**; anything murkier is flagged as **needs review**, with the model's reasoning attached so a human can make the final call quickly instead of starting from scratch.
 
 There are two pieces:
 
