@@ -42,9 +42,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install IBM Bob Shell binary
-# We use the official script. Since it's headless, we assume the script
-# handles global installation to /usr/local/bin or similar.
-RUN curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash -s -- --yes
+# We use the official script. We specify the package manager to avoid interactive prompts.
+RUN curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash -s -- --pm npm
 
 WORKDIR /app
 
