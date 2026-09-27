@@ -59,19 +59,12 @@ export async function POST(request: Request) {
       const repo = body.repo_name!;
       const prNumber = body.pr_number!;
 
-      // 1. Get PR metadata (branch name, head SHA, mergeability)
+      // 1. Get PR metadata (branch name, head SHA, base SHA)
       const prInfo = await getPrInfo(owner, repo, prNumber);
 
-      // 2. Guard: if GitHub hasn't computed mergeability yet, tell the user to retry
-      if (prInfo.mergeable === null) {
-        return NextResponse.json(
-          { error: 'GitHub is still computing mergeability for this PR. Wait a few seconds and try again.' },
-          { status: 503 }
-        );
-      }
-
-      // 3. Fetch the raw content of every conflicted file from the PR
-      const conflictedFiles = await fetchConflictedFiles(owner, repo, prNumber, prInfo.headSha);
+      // 2. Fetch conflicted files — git merge-file generates the markers locally
+      //    so this works regardless of GitHub's mergeable state
+      const conflictedFiles = await fetchConflictedFiles(owner, repo, prNumber, prInfo.headSha, prInfo.baseSha);
 
       if (conflictedFiles.length === 0) {
         await writeTickets([]);
