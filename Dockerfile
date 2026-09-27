@@ -13,19 +13,15 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy package files first for better caching
-COPY package*.json ./
 COPY cli/package*.json ./cli/
 COPY website/package*.json ./website/
 
-# Install dependencies for the whole project
-RUN npm install
-
-# Install dependencies and build the CLI
+# Install dependencies for the CLI
 WORKDIR /app/cli
 RUN npm install
 RUN npm run build
 
-# Build the Website
+# Install dependencies and build the Website
 WORKDIR /app/website
 RUN npm install
 RUN npm run build
