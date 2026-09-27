@@ -60,7 +60,8 @@ export async function getPrInfo(
 export async function fetchConflictedFiles(
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
+  headSha: string
 ): Promise<PrFile[]> {
   const octokit = getOctokit();
 
@@ -72,7 +73,7 @@ export async function fetchConflictedFiles(
     per_page: 100,
   });
 
-  // Fetch the raw content of each file from the PR head ref
+  // Fetch the raw content of each file at the PR head commit
   const results: PrFile[] = [];
 
   for (const f of prFiles) {
@@ -85,7 +86,7 @@ export async function fetchConflictedFiles(
         owner,
         repo,
         path: f.filename,
-        ref: f.sha ?? undefined, // f.sha is the blob SHA for this file in the PR
+        ref: headSha, // commit SHA from the PR head — valid git ref
       });
 
       // getContent returns an object with a content field (base64) for files

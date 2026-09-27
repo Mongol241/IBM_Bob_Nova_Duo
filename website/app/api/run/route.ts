@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       const prInfo = await getPrInfo(owner, repo, prNumber);
 
       // 2. Fetch the raw content of every conflicted file from the PR
-      const conflictedFiles = await fetchConflictedFiles(owner, repo, prNumber);
+      const conflictedFiles = await fetchConflictedFiles(owner, repo, prNumber, prInfo.headSha);
 
       if (conflictedFiles.length === 0) {
         await writeTickets([]);
