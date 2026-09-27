@@ -57,10 +57,12 @@ RUN mkdir -p /app/website/data
 
 # Set Environment Variables (Defaults)
 ENV NODE_ENV=production
-ENV PORT=3000
 ENV CLI_PATH=/app/cli/dist/index.js
 
 EXPOSE 3000
 
 # Start the Next.js application
-CMD ["npm", "--prefix", "website", "start"]
+# Use node_modules/.bin/next directly so we can pass $PORT at runtime.
+# Railway injects PORT as an env var; Next.js does not read it automatically
+# without the -p flag, which causes the health-check to fail with SIGTERM.
+CMD ["sh", "-c", "node /app/website/node_modules/.bin/next start /app/website -p ${PORT:-3000}"]
