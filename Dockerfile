@@ -62,7 +62,7 @@ ENV CLI_PATH=/app/cli/dist/index.js
 EXPOSE 3000
 
 # Start the Next.js application
-# Use node_modules/.bin/next directly so we can pass $PORT at runtime.
-# Railway injects PORT as an env var; Next.js does not read it automatically
-# without the -p flag, which causes the health-check to fail with SIGTERM.
-CMD ["sh", "-c", "node /app/website/node_modules/.bin/next start /app/website -p ${PORT:-3000}"]
+# cd into /app/website first so that process.cwd() returns /app/website inside
+# Next.js API routes, keeping all path.join(process.cwd(), ...) calls correct.
+# Pass $PORT explicitly; Railway injects it and Next.js requires the -p flag.
+CMD ["sh", "-c", "cd /app/website && node node_modules/.bin/next start -p ${PORT:-3000}"]

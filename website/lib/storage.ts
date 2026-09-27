@@ -1,14 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { Ticket } from './types';
 
-// Resolve relative to this file so the path is correct regardless of cwd.
-// In production the server may run from /app rather than /app/website, so
-// process.cwd()-based paths are unreliable.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const STORAGE_PATH = path.join(__dirname, '..', 'data', 'tickets.json');
+// process.cwd() is /app/website because the Dockerfile CMD does:
+//   cd /app/website && node node_modules/.bin/next start ...
+const STORAGE_PATH = path.join(process.cwd(), 'data', 'tickets.json');
 
 export async function readTickets(): Promise<Ticket[]> {
   try {

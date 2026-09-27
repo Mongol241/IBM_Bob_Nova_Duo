@@ -51,13 +51,15 @@ export async function getPrInfo(
 /**
  * Fetch the raw content of every file in a PR that contains conflict markers.
  *
- * Conflict markers (`<<<<<<<`) only exist in GitHub's test merge commit, exposed at
- * `refs/pull/<PR>/merge`. The PR branch's head commit contains clean source — no markers.
+ * Conflict markers (`<<<<<<<`) only exist in GitHub's test merge commit. GitHub exposes
+ * this via the Git refs API at `refs/pull/<N>/merge`, but `repos.getContent` does not
+ * accept full ref paths — we must first resolve the ref to a commit SHA via
+ * `git.getRef`, then use that SHA with `getContent`.
  *
  * Strategy:
- *   1. Fetch content from `refs/pull/<N>/merge` to detect conflict markers.
- *   2. For each conflicted file, also fetch the blob SHA from the PR head so we have
- *      the correct SHA to pass when pushing the resolution back to the branch.
+ *   1. Resolve `refs/pull/<N>/merge` → merge commit SHA via the Git refs API.
+ *   2. For each changed file, fetch content at that SHA to find conflict markers.
+ *   3. For each conflicted file, fetch its blob SHA at the PR head (needed for push-back).
  */
 export async function fetchConflictedFiles(
   owner: string,
@@ -67,7 +69,22 @@ export async function fetchConflictedFiles(
 ): Promise<PrFile[]> {
   const octokit = getOctokit();
 
-  // Get the list of files changed in this PR
+  // Step 1: resolve the pull merge ref to a real commit SHA
+  let mergeSha: string;
+  try {
+    const { data } = await octokit.git.getRef({
+      owner,
+      repo,
+      ref: `pull/${prNumber}/merge`, // getRef strips the leading "refs/"
+    });
+    mergeSha = data.object.sha;
+  } catch {
+    // GitHub hasn't computed a merge commit yet (mergeable === null) or the PR
+    // has no conflicts according to GitHub — nothing to resolve.
+    return [];
+  }
+
+  // Step 2: list files changed in the PR
   const { data: prFiles } = await octokit.pulls.listFiles({
     owner,
     repo,
@@ -75,30 +92,39 @@ export async function fetchConflictedFiles(
     per_page: 100,
   });
 
-  const mergeRef = `refs/pull/${prNumber}/merge`;
   const results: PrFile[] = [];
 
   for (const f of prFiles) {
     if (!f.filename || f.status === 'removed') continue;
 
-    // Step 1: fetch from the merge ref — this is where conflict markers live
+    // Fetch file content at the merge commit SHA — conflict markers live here.
+    // Files >1 MB: GitHub returns content="" and provides a download_url instead.
     let content: string;
     try {
       const { data } = await octokit.repos.getContent({
         owner,
         repo,
         path: f.filename,
-        ref: mergeRef,
+        ref: mergeSha,
       });
       if (Array.isArray(data) || data.type !== 'file') continue;
-      content = Buffer.from(data.content, 'base64').toString('utf8');
+      if (data.content) {
+        content = Buffer.from(data.content, 'base64').toString('utf8');
+      } else if (data.download_url) {
+        // Large file (>1 MB) — fetch the raw content directly
+        const res = await fetch(data.download_url);
+        if (!res.ok) continue;
+        content = await res.text();
+      } else {
+        continue;
+      }
     } catch {
       continue;
     }
 
     if (!content.includes('<<<<<<<')) continue;
 
-    // Step 2: fetch the blob SHA from the PR head branch (needed for the push-back)
+    // Step 3: fetch blob SHA from the PR head branch (needed when pushing the resolution)
     let blobSha: string;
     try {
       const { data } = await octokit.repos.getContent({

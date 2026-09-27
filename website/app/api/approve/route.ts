@@ -8,10 +8,13 @@ import { pushResolvedFile } from '@/lib/github';
 
 const execPromise = promisify(exec);
 
-// process.cwd() is the website/ directory when running via Next.js
-const ROOT = path.resolve(process.cwd(), '..');
+// process.cwd() is /app/website because the Dockerfile CMD does:
+//   cd /app/website && node node_modules/.bin/next start ...
+// All paths here are anchored to that working directory.
+const ROOT = path.resolve(process.cwd(), '..');          // /app
 const DEFAULT_CLI_PATH = path.join(ROOT, 'cli', 'dist', 'index.js');
 const DEFAULT_REPO_PATH = path.join(ROOT, 'cli', 'demo-repo');
+const DATA_DIR = path.join(process.cwd(), 'data');       // /app/website/data
 
 /**
  * POST /api/approve
@@ -54,7 +57,8 @@ export async function POST(request: Request) {
     } else {
       // ── Local mode (original behaviour) ───────────────────────────────────
       // Write the current ticket state to a temp file for the CLI to consume
-      const tmpFile = path.join(process.cwd(), 'data', 'current_tickets.json');
+      const tmpFile = path.join(DATA_DIR, 'current_tickets.json');
+      await fs.mkdir(DATA_DIR, { recursive: true }); // ensure dir exists
       await fs.writeFile(tmpFile, JSON.stringify(tickets, null, 2));
 
       const cliPath = process.env.CLI_PATH
